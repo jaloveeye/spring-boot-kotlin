@@ -2,7 +2,7 @@
 
 ## Current State
 
-- No GitHub remote is configured yet.
+- GitHub remote is configured for `jaloveeye/spring-boot-kotlin`
 - Local branches currently present: `main`, `develop`
 - CI/CD workflows already exist in `.github/workflows/`
 
