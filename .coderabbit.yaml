@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "ko-KR"
+tone_instructions: >
+  우선순위는 버그, 회귀 가능성, 누락된 테스트, 스펙 불일치다.
+  요약은 짧게 유지하고, 의견은 구체적인 파일과 동작 기준으로 제시한다.
+
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: false
+  path_instructions:
+    - path: "src/main/kotlin/**"
+      instructions: >
+        Spring Boot 동작, 입력 검증, 트랜잭션 경계, 예외 처리, 런타임 안전성을
+        우선적으로 본다.
+    - path: "src/test/**"
+      instructions: >
+        동작 변경을 충분히 검증하는지, 회귀를 막는 테스트가 있는지,
+        과도한 mocking 없이 읽기 쉬운지 본다.
+    - path: ".github/workflows/**"
+      instructions: >
+        secret 처리, CI/CD 안전성, 서버 설정이 없는 초기 상태에서의 실패/스킵
+        동작을 중점적으로 본다.
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "PROJECT_RULES.md"
+      - "docs/specs/**/*.md"
+
+chat:
+  auto_reply: true
