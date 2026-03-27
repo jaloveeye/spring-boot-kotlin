@@ -1,2 +1,23 @@
 server:
   port: 8080
+
+spring:
+  application:
+    name: step01
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:step01}}
+    username: ${SPRING_DATASOURCE_USERNAME:${POSTGRES_USER:step01}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${POSTGRES_PASSWORD:step01}}
+    hikari:
+      initialization-fail-timeout: -1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized

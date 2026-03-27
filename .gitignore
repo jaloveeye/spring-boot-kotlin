@@ -3,3 +3,5 @@
 build/
 out/
 *.log
+.env
+deploy/.env.local-deploy

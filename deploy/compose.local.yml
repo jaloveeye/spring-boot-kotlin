@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: step01-local-deploy-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-step01}
+      POSTGRES_USER: ${POSTGRES_USER:-step01}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-step01}
+    ports:
+      - "${LOCAL_POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - local-deploy-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-step01} -d $${POSTGRES_DB:-step01}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  app:
+    image: ${APP_IMAGE:-step01:local}
+    container_name: step01-local-deploy-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${LOCAL_APP_PORT:-18081}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-step01}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-step01}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-step01}
+
+volumes:
+  local-deploy-postgres-data:
