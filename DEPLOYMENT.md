@@ -56,7 +56,7 @@ Optional GitHub environment variable:
 Workflow behavior:
 
 - `ci.yml`: runs tests and validates the Docker image build on pull requests and pushes
-- `deploy-dev.yml`: auto-builds, pushes, and deploys `develop-*` images after successful CI on `develop`
+- `deploy-dev.yml`: auto-builds, pushes, and deploys `develop-*` images after successful CI on `develop`, but skips cleanly until dev deployment secrets are configured
 - `deploy-prod.yml`: manually builds, pushes, tests, and deploys `prod-*` images from a chosen git ref
 
 ## Deployment Target
@@ -98,3 +98,4 @@ Defaults:
 - Production deployment should not rely on the local PostgreSQL compose service.
 - Flyway migrations in `src/main/resources/db/migration` are now the source of truth for schema changes.
 - Local experiment deployment intentionally uses separate ports so it does not collide with the existing development flow.
+- Before a real deployment target exists, `deploy-dev.yml` is expected to no-op instead of failing on missing deployment secrets.

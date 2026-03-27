@@ -2,7 +2,7 @@
 
 ## Current State
 
-- No GitHub remote is configured yet.
+- GitHub remote is configured for `jaloveeye/spring-boot-kotlin`
 - Local branches currently present: `main`, `develop`
 - CI/CD workflows already exist in `.github/workflows/`
 
@@ -159,6 +159,25 @@ Once the above is stable:
 - Connect CodeRabbit
 - Add CodeRabbit review requirements to the PR process
 - Tighten branch protection rules if needed
+
+## 10. Connect CodeRabbit
+
+Recommended flow:
+
+1. Sign in at CodeRabbit and choose the GitHub integration
+2. Select `Only select repositories`
+3. Grant access to `jaloveeye/spring-boot-kotlin`
+4. Confirm the installation and return to the CodeRabbit dashboard
+
+This repository already includes a root-level `.coderabbit.yaml` file, so the first review will use repository-local settings automatically.
+
+Suggested first validation:
+
+1. Open or reuse a pull request against `develop`
+2. Wait for the automatic CodeRabbit review to appear
+3. If needed, comment `@coderabbitai review` for an incremental review
+4. If needed, comment `@coderabbitai full review` for a fresh full review
+5. Adjust the YAML later if the review tone or focus needs tuning
 
 ## Notes
 

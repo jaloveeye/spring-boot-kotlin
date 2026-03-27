@@ -33,7 +33,39 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
+      - name: Check deployment configuration
+        id: config
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          SPRING_DATASOURCE_URL: ${{ secrets.SPRING_DATASOURCE_URL }}
+          SPRING_DATASOURCE_USERNAME: ${{ secrets.SPRING_DATASOURCE_USERNAME }}
+          SPRING_DATASOURCE_PASSWORD: ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
+        run: |
+          missing=()
+          for key in DEPLOY_HOST DEPLOY_PORT DEPLOY_USER DEPLOY_SSH_KEY SPRING_DATASOURCE_URL SPRING_DATASOURCE_USERNAME SPRING_DATASOURCE_PASSWORD; do
+            if [ -z "${!key}" ]; then
+              missing+=("$key")
+            fi
+          done
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Dev deployment secrets are not configured yet. Skipping deployment."
+            echo "Missing: ${missing[*]}"
+            exit 0
+          fi
+
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Skip deployment when dev environment is not configured
+        if: ${{ steps.config.outputs.ready != 'true' }}
+        run: echo "No dev deployment target is configured yet. This workflow is intentionally skipping."
+
       - name: Set up JDK 25
+        if: ${{ steps.config.outputs.ready == 'true' }}
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -41,9 +73,11 @@ jobs:
           cache: gradle
 
       - name: Make Gradle executable
+        if: ${{ steps.config.outputs.ready == 'true' }}
         run: chmod +x gradlew
 
       - name: Log in to GHCR
+        if: ${{ steps.config.outputs.ready == 'true' }}
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -51,6 +85,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push image
+        if: ${{ steps.config.outputs.ready == 'true' }}
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -60,6 +95,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop-latest
 
       - name: Prepare SSH key
+        if: ${{ steps.config.outputs.ready == 'true' }}
         run: |
           install -m 700 -d ~/.ssh
           printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
@@ -67,11 +103,13 @@ jobs:
           ssh-keyscan -p "${{ secrets.DEPLOY_PORT }}" "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Upload deployment files
+        if: ${{ steps.config.outputs.ready == 'true' }}
         run: |
           ssh -p "${{ secrets.DEPLOY_PORT }}" "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" "mkdir -p ~/step01/deploy"
           scp -P "${{ secrets.DEPLOY_PORT }}" deploy/compose.app.yml "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:~/step01/deploy/compose.app.yml"
 
       - name: Deploy on target host
+        if: ${{ steps.config.outputs.ready == 'true' }}
         run: |
           ssh -p "${{ secrets.DEPLOY_PORT }}" "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" <<EOF
           cat > ~/step01/.env <<ENVFILE
