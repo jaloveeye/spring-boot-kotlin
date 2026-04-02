@@ -1,0 +1,34 @@
+grafana:
+  enabled: true
+  defaultDashboardsTimezone: Asia/Seoul
+  adminUser: admin
+  adminPassword: adminpw
+  grafana.ini:
+    security:
+      allow_embedding: true
+    auth.anonymous:
+      enabled: true
+      org_role: Viewer
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+  service:
+    type: NodePort
+    nodePort: 32000
+
+alertmanager:
+  enabled: false
+
+prometheus:
+  service:
+    type: NodePort
+    nodePort: 32090
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+    retention: 3d
+    scrapeInterval: 30s
+    evaluationInterval: 30s
