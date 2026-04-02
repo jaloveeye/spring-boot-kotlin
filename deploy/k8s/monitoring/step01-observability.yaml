@@ -1,0 +1,135 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: step01-app
+  namespace: monitoring
+  labels:
+    release: step01-monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - step01-local
+  selector:
+    matchLabels:
+      app: step01-app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-step01-overview
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  step01-overview.json: |
+    {
+      "id": null,
+      "uid": "step01-overview",
+      "title": "Step01 Overview",
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 2,
+      "refresh": "10s",
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Step01 App Up",
+          "id": 1,
+          "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0},
+          "targets": [
+            {
+              "expr": "max(up{namespace=\"step01-local\",service=\"step01-app\"})",
+              "legendFormat": "up"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "green", "value": 1}
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "orientation": "auto",
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center"
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "HTTP Requests / sec",
+          "id": 2,
+          "gridPos": {"h": 8, "w": 16, "x": 8, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{namespace=\"step01-local\"}[1m])) by (method,status)",
+              "legendFormat": "{{method}} {{status}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "HTTP p95 Latency (ms)",
+          "id": 5,
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14},
+          "targets": [
+            {
+              "expr": "1000 * histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{namespace=\"step01-local\",uri!~\"/actuator.*\"}[5m])) by (le,uri,method))",
+              "legendFormat": "{{method}} {{uri}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "HTTP 5xx Error Rate (/sec)",
+          "id": 6,
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14},
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{namespace=\"step01-local\",status=~\"5..\",uri!~\"/actuator.*\"}[5m])) by (uri,method,status)",
+              "legendFormat": "{{method}} {{uri}} {{status}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "JVM Heap Used (bytes)",
+          "id": 3,
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+          "targets": [
+            {
+              "expr": "jvm_memory_used_bytes{namespace=\"step01-local\",area=\"heap\"}",
+              "legendFormat": "{{id}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Hikari Connections",
+          "id": 4,
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "targets": [
+            {
+              "expr": "hikaricp_connections{namespace=\"step01-local\"}",
+              "legendFormat": "{{pool}} {{state}}"
+            }
+          ]
+        }
+      ],
+      "templating": {"list": []},
+      "annotations": {"list": []},
+      "time": {"from": "now-30m", "to": "now"}
+    }

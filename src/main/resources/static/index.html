@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Step01 Local Ops Dashboard</title>
+  <style>
+    :root {
+      --bg-0: #0b1220;
+      --bg-1: #111c34;
+      --bg-2: #1a2f4d;
+      --card: rgba(255, 255, 255, 0.08);
+      --line: rgba(255, 255, 255, 0.2);
+      --text: #f2f7ff;
+      --muted: #c6d6f5;
+      --ok: #3cd6a8;
+      --warn: #ffd166;
+      --bad: #ef476f;
+      --accent: #7aa9ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 500px at -10% -20%, #244b85 0%, transparent 60%),
+        radial-gradient(900px 500px at 110% -20%, #165c6b 0%, transparent 60%),
+        linear-gradient(165deg, var(--bg-0) 0%, var(--bg-1) 45%, var(--bg-2) 100%);
+      font-family: "IBM Plex Sans", "Noto Sans KR", "Segoe UI", sans-serif;
+      line-height: 1.5;
+      padding: 24px;
+    }
+
+    .wrap {
+      max-width: 1040px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 20px;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+      backdrop-filter: blur(4px);
+    }
+
+    .filters {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+    }
+
+    .filter-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .filter-pill input {
+      accent-color: #3cd6a8;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      letter-spacing: 0.02em;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      grid-auto-rows: 24px;
+      gap: 14px;
+    }
+
+    .tile {
+      --w: 4;
+      --h: 11;
+      grid-column: span var(--w);
+      grid-row: span var(--h);
+      position: relative;
+      min-height: 140px;
+    }
+
+    .tile.dragging {
+      opacity: 0.5;
+    }
+
+    .tile.drop-target {
+      outline: 2px dashed rgba(122, 169, 255, 0.8);
+      outline-offset: 2px;
+    }
+
+    .tile-handle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: -6px 0 10px;
+      cursor: grab;
+      color: var(--muted);
+      user-select: none;
+      font-size: 0.8rem;
+    }
+
+    .tile-handle:active {
+      cursor: grabbing;
+    }
+
+    .resize-handle {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      width: 14px;
+      height: 14px;
+      border-right: 2px solid rgba(122, 169, 255, 0.9);
+      border-bottom: 2px solid rgba(122, 169, 255, 0.9);
+      cursor: nwse-resize;
+      opacity: 0.85;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      background: var(--card);
+    }
+
+    .title {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.85rem;
+      border: 1px solid var(--line);
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--warn);
+      box-shadow: 0 0 10px rgba(255, 209, 102, 0.6);
+    }
+
+    .ok .dot { background: var(--ok); box-shadow: 0 0 10px rgba(60, 214, 168, 0.7); }
+    .bad .dot { background: var(--bad); box-shadow: 0 0 10px rgba(239, 71, 111, 0.7); }
+
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .btn {
+      display: inline-block;
+      text-decoration: none;
+      border: 1px solid var(--line);
+      color: var(--text);
+      background: rgba(122, 169, 255, 0.14);
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      transition: transform 120ms ease, background 120ms ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      background: rgba(122, 169, 255, 0.23);
+    }
+
+    code {
+      font-family: "JetBrains Mono", "Fira Code", monospace;
+      font-size: 0.85rem;
+      background: rgba(255, 255, 255, 0.09);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 2px 6px;
+    }
+
+    .mini {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+        grid-auto-rows: auto;
+      }
+
+      .tile {
+        grid-column: span 1;
+        grid-row: auto;
+      }
+
+      .resize-handle {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <h1>Step01 Local Ops Dashboard</h1>
+      <p class="sub">Spring Boot + k3d + Prometheus/Grafana 로컬 운영 상태를 한 화면에서 확인합니다.</p>
+      <div id="tileFilters" class="filters">
+        <label class="filter-pill"><input type="checkbox" data-target="tile-app-health" checked> App Health</label>
+        <label class="filter-pill"><input type="checkbox" data-target="tile-monitoring-links" checked> Monitoring Links</label>
+        <label class="filter-pill"><input type="checkbox" data-target="tile-runbook" checked> Runbook</label>
+        <label class="filter-pill"><input type="checkbox" data-target="tile-k3d-snapshot" checked> K3d Snapshot</label>
+        <label class="filter-pill"><input type="checkbox" data-target="tile-grafana" checked> Grafana Overview</label>
+      </div>
+    </section>
+
+    <section id="dashboardLayout" class="layout">
+      <article id="tile-app-health" class="tile card" draggable="true" style="--w:4; --h:12;">
+        <div class="tile-handle">Drag Card</div>
+        <h2 class="title">App Health</h2>
+        <div id="healthStatus" class="status"><span class="dot"></span><span>확인 중...</span></div>
+        <p id="healthBody" class="mini"></p>
+        <div class="links">
+          <a class="btn" href="/actuator/health" target="_blank" rel="noopener">/actuator/health</a>
+          <a class="btn" href="/hello" target="_blank" rel="noopener">/hello</a>
+        </div>
+        <div class="resize-handle" title="크기 조절"></div>
+      </article>
+
+      <article id="tile-monitoring-links" class="tile card" draggable="true" style="--w:4; --h:12;">
+        <div class="tile-handle">Drag Card</div>
+        <h2 class="title">Monitoring Links</h2>
+        <div id="monitoringStatus" class="status"><span class="dot"></span><span>모니터링 연결 확인 중...</span></div>
+        <div class="links">
+          <a class="btn" href="http://localhost:3000" target="_blank" rel="noopener">Grafana 열기</a>
+          <a class="btn" href="http://localhost:9090" target="_blank" rel="noopener">Prometheus 열기</a>
+          <a class="btn" href="http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/" target="_blank" rel="noopener">K8s Dashboard 열기</a>
+          <a class="btn" href="http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/#/workloads?namespace=step01-local" target="_blank" rel="noopener">step01-local 바로가기</a>
+          <a class="btn" href="http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/#/workloads?namespace=monitoring" target="_blank" rel="noopener">monitoring 바로가기</a>
+        </div>
+        <p class="mini">Grafana 직접 접속: <code>http://localhost:3000</code></p>
+        <p class="mini">Prometheus 직접 접속: <code>http://localhost:9090</code></p>
+        <p class="mini">K8s Dashboard 직접 접속: <code>http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/</code></p>
+        <div class="resize-handle" title="크기 조절"></div>
+      </article>
+
+      <article id="tile-runbook" class="tile card" draggable="true" style="--w:4; --h:12;">
+        <div class="tile-handle">Drag Card</div>
+        <h2 class="title">Runbook</h2>
+        <p class="mini">애플리케이션 배포: <code>bash scripts/k3d-deploy.sh up</code></p>
+        <p class="mini">모니터링 배포: <code>bash scripts/k3d-monitoring.sh up</code></p>
+        <p class="mini">클러스터 상태: <code>bash scripts/k3d-deploy.sh status</code></p>
+        <p class="mini">Grafana 비밀번호: <code>bash scripts/k3d-monitoring.sh password</code></p>
+        <p class="mini">K8s Dashboard 설치: <code>bash scripts/k3d-monitoring.sh dashboard-up</code></p>
+        <p class="mini">K8s Dashboard 프록시 시작: <code>bash scripts/k3d-monitoring.sh dashboard-bg</code></p>
+        <p class="mini">K8s Dashboard 토큰: <code>bash scripts/k3d-monitoring.sh dashboard-token</code></p>
+        <div class="resize-handle" title="크기 조절"></div>
+      </article>
+
+      <article id="tile-k3d-snapshot" class="tile card" draggable="true" style="--w:6; --h:10;">
+        <div class="tile-handle">Drag Card</div>
+        <h2 class="title">K3d Monitoring Snapshot</h2>
+        <div id="k3dStatus" class="status"><span class="dot"></span><span>클러스터 지표 확인 중...</span></div>
+        <p id="k3dNodes" class="mini"></p>
+        <p id="k3dStep01" class="mini"></p>
+        <p id="k3dMonitoring" class="mini"></p>
+        <div class="resize-handle" title="크기 조절"></div>
+      </article>
+
+      <section id="tile-grafana" class="tile card" draggable="true" style="--w:12; --h:28;">
+        <div class="tile-handle">Drag Card</div>
+        <h2 class="title">Grafana Step01 Overview</h2>
+        <p class="mini">메인 대시보드에 Grafana 패널을 직접 임베드합니다.</p>
+        <iframe
+          title="Grafana Step01 Overview"
+          src="http://localhost:3000/d/step01-overview/step01-overview?orgId=1&kiosk&refresh=10s"
+          style="width:100%; height:calc(100% - 68px); min-height:420px; border:1px solid var(--line); border-radius:12px; background:#0b1220;"
+          loading="lazy"
+        ></iframe>
+        <div class="resize-handle" title="크기 조절"></div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const layout = document.getElementById("dashboardLayout");
+    const healthStatus = document.getElementById("healthStatus");
+    const healthBody = document.getElementById("healthBody");
+    const monitoringStatus = document.getElementById("monitoringStatus");
+    const k3dStatus = document.getElementById("k3dStatus");
+    const k3dNodes = document.getElementById("k3dNodes");
+    const k3dStep01 = document.getElementById("k3dStep01");
+    const k3dMonitoring = document.getElementById("k3dMonitoring");
+    const tileFilters = document.getElementById("tileFilters");
+    const layoutKey = "step01.dashboard.layout.v1";
+    const visibilityKey = "step01.dashboard.visibility.v1";
+
+    function setStatus(mode, text) {
+      healthStatus.className = `status ${mode}`;
+      healthStatus.querySelector("span:last-child").textContent = text;
+    }
+
+    async function loadHealth() {
+      try {
+        const res = await fetch("/actuator/health", { cache: "no-store" });
+        if (!res.ok) {
+          setStatus("bad", `HTTP ${res.status}`);
+          return;
+        }
+        const json = await res.json();
+        const up = String(json.status || "").toUpperCase() === "UP";
+        setStatus(up ? "ok" : "bad", `Status: ${json.status || "UNKNOWN"}`);
+        healthBody.textContent = JSON.stringify(json);
+      } catch (e) {
+        setStatus("bad", "연결 실패");
+        healthBody.textContent = "앱이 실행 중인지 확인해 주세요.";
+      }
+    }
+
+    function setMonitoringStatus(mode, text) {
+      monitoringStatus.className = `status ${mode}`;
+      monitoringStatus.querySelector("span:last-child").textContent = text;
+    }
+
+    async function loadMonitoring() {
+      let grafanaOk = false;
+      let prometheusOk = false;
+      let kubernetesDashboardOk = false;
+
+      try {
+        const res = await fetch("/api/monitoring/status", { cache: "no-store" });
+        if (res.ok) {
+          const json = await res.json();
+          grafanaOk = Boolean(json.grafanaUp);
+          prometheusOk = Boolean(json.prometheusUp);
+          kubernetesDashboardOk = Boolean(json.kubernetesDashboardUp);
+        }
+      } catch (e) {
+        grafanaOk = false;
+        prometheusOk = false;
+        kubernetesDashboardOk = false;
+      }
+
+      if (grafanaOk && prometheusOk && kubernetesDashboardOk) {
+        setMonitoringStatus("ok", "Grafana/Prometheus/K8s Dashboard 연결됨");
+        return;
+      }
+
+      if (grafanaOk || prometheusOk || kubernetesDashboardOk) {
+        const partial = [
+          grafanaOk ? "Grafana OK" : "Grafana OFF",
+          prometheusOk ? "Prometheus OK" : "Prometheus OFF",
+          kubernetesDashboardOk ? "K8s Dashboard OK" : "K8s Dashboard OFF"
+        ].join(", ");
+        setMonitoringStatus("status", partial);
+        return;
+      }
+
+      setMonitoringStatus("bad", "모니터링 연결 안 됨");
+    }
+
+    function setK3dStatus(mode, text) {
+      k3dStatus.className = `status ${mode}`;
+      k3dStatus.querySelector("span:last-child").textContent = text;
+    }
+
+    async function loadK3dSummary() {
+      try {
+        const res = await fetch("/api/monitoring/k3d-summary", { cache: "no-store" });
+        if (!res.ok) {
+          setK3dStatus("bad", `요약 조회 실패 (HTTP ${res.status})`);
+          return;
+        }
+
+        const json = await res.json();
+        const step = json.step01Local || {};
+        const mon = json.monitoring || {};
+        const healthy = (step.podsRunning === step.podsTotal) && (mon.podsRunning === mon.podsTotal);
+
+        setK3dStatus(healthy ? "ok" : "status", healthy ? "k3d 워크로드 정상" : "일부 워크로드 점검 필요");
+        k3dNodes.textContent = `노드 수: ${json.nodeCount ?? 0}`;
+        k3dStep01.textContent = `step01-local Pod: ${step.podsRunning ?? 0}/${step.podsTotal ?? 0}, 재시작: ${step.restartTotal ?? 0}`;
+        k3dMonitoring.textContent = `monitoring Pod: ${mon.podsRunning ?? 0}/${mon.podsTotal ?? 0}, 재시작: ${mon.restartTotal ?? 0}`;
+      } catch (e) {
+        setK3dStatus("bad", "k3d 요약 조회 실패");
+        k3dNodes.textContent = "Prometheus 수집 상태를 확인해 주세요.";
+      }
+    }
+
+    function saveLayout() {
+      const tiles = [...layout.querySelectorAll(".tile")].map((tile, idx) => ({
+        id: tile.id,
+        w: Number(tile.style.getPropertyValue("--w") || 4),
+        h: Number(tile.style.getPropertyValue("--h") || 10),
+        order: idx
+      }));
+      localStorage.setItem(layoutKey, JSON.stringify(tiles));
+    }
+
+    function loadLayout() {
+      const raw = localStorage.getItem(layoutKey);
+      if (!raw) return;
+
+      try {
+        const saved = JSON.parse(raw);
+        if (!Array.isArray(saved)) return;
+
+        const byId = new Map(saved.map(item => [item.id, item]));
+        const tiles = [...layout.querySelectorAll(".tile")];
+        tiles.sort((a, b) => {
+          const oa = byId.get(a.id)?.order ?? 9999;
+          const ob = byId.get(b.id)?.order ?? 9999;
+          return oa - ob;
+        }).forEach(tile => {
+          const item = byId.get(tile.id);
+          if (item) {
+            tile.style.setProperty("--w", String(Math.max(1, Math.min(12, Number(item.w) || 4))));
+            tile.style.setProperty("--h", String(Math.max(6, Math.min(40, Number(item.h) || 10))));
+          }
+          layout.appendChild(tile);
+        });
+      } catch (e) {
+        console.error("Failed to load layout", e);
+      }
+    }
+
+    function saveVisibility() {
+      const visibility = {};
+      layout.querySelectorAll(".tile").forEach(tile => {
+        visibility[tile.id] = tile.style.display !== "none";
+      });
+      localStorage.setItem(visibilityKey, JSON.stringify(visibility));
+    }
+
+    function applyVisibility(visibility) {
+      layout.querySelectorAll(".tile").forEach(tile => {
+        const visible = visibility[tile.id] !== false;
+        tile.style.display = visible ? "" : "none";
+        const checkbox = tileFilters.querySelector(`input[data-target="${tile.id}"]`);
+        if (checkbox) checkbox.checked = visible;
+      });
+    }
+
+    function loadVisibility() {
+      const raw = localStorage.getItem(visibilityKey);
+      if (!raw) return;
+      try {
+        const visibility = JSON.parse(raw);
+        applyVisibility(visibility);
+      } catch (e) {
+        console.error("Failed to load visibility", e);
+      }
+    }
+
+    function setupVisibilityFilters() {
+      tileFilters.querySelectorAll("input[type='checkbox']").forEach(input => {
+        input.addEventListener("change", () => {
+          const tile = document.getElementById(input.dataset.target);
+          if (!tile) return;
+          tile.style.display = input.checked ? "" : "none";
+          saveVisibility();
+        });
+      });
+    }
+
+    function setupDragAndDrop() {
+      let dragging = null;
+
+      layout.querySelectorAll(".tile").forEach(tile => {
+        tile.addEventListener("dragstart", (e) => {
+          dragging = tile;
+          tile.classList.add("dragging");
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", tile.id);
+        });
+
+        tile.addEventListener("dragend", () => {
+          tile.classList.remove("dragging");
+          layout.querySelectorAll(".drop-target").forEach(el => el.classList.remove("drop-target"));
+          saveLayout();
+        });
+
+        tile.addEventListener("dragover", (e) => {
+          if (!dragging || dragging === tile) return;
+          e.preventDefault();
+          tile.classList.add("drop-target");
+        });
+
+        tile.addEventListener("dragleave", () => {
+          tile.classList.remove("drop-target");
+        });
+
+        tile.addEventListener("drop", (e) => {
+          if (!dragging || dragging === tile) return;
+          e.preventDefault();
+          tile.classList.remove("drop-target");
+          const rect = tile.getBoundingClientRect();
+          const insertBefore = (e.clientY < rect.top + rect.height / 2);
+          if (insertBefore) {
+            layout.insertBefore(dragging, tile);
+          } else {
+            layout.insertBefore(dragging, tile.nextSibling);
+          }
+          saveLayout();
+        });
+      });
+    }
+
+    function setupResize() {
+      layout.querySelectorAll(".tile").forEach(tile => {
+        const handle = tile.querySelector(".resize-handle");
+        if (!handle) return;
+
+        handle.addEventListener("pointerdown", (e) => {
+          if (window.matchMedia("(max-width: 900px)").matches) return;
+          e.preventDefault();
+          e.stopPropagation();
+
+          const startX = e.clientX;
+          const startY = e.clientY;
+          const startW = Number(tile.style.getPropertyValue("--w") || 4);
+          const startH = Number(tile.style.getPropertyValue("--h") || 10);
+          const gridStyles = window.getComputedStyle(layout);
+          const colTemplate = gridStyles.gridTemplateColumns.split(" ").length;
+          const colGap = parseFloat(gridStyles.columnGap || "14");
+          const colWidth = (layout.clientWidth - (colTemplate - 1) * colGap) / colTemplate;
+          const rowSize = parseFloat(gridStyles.gridAutoRows || "24");
+          const rowGap = parseFloat(gridStyles.rowGap || "14");
+
+          const onMove = (ev) => {
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            const dw = Math.round(dx / Math.max(colWidth + colGap, 1));
+            const dh = Math.round(dy / Math.max(rowSize + rowGap, 1));
+            tile.style.setProperty("--w", String(Math.max(1, Math.min(12, startW + dw))));
+            tile.style.setProperty("--h", String(Math.max(6, Math.min(40, startH + dh))));
+          };
+
+          const onUp = () => {
+            window.removeEventListener("pointermove", onMove);
+            window.removeEventListener("pointerup", onUp);
+            saveLayout();
+          };
+
+          window.addEventListener("pointermove", onMove);
+          window.addEventListener("pointerup", onUp);
+        });
+      });
+    }
+
+    loadLayout();
+    setupVisibilityFilters();
+    loadVisibility();
+    setupDragAndDrop();
+    setupResize();
+    loadHealth();
+    loadMonitoring();
+    loadK3dSummary();
+    setInterval(loadHealth, 8000);
+    setInterval(loadMonitoring, 8000);
+    setInterval(loadK3dSummary, 8000);
+  </script>
+</body>
+</html>
